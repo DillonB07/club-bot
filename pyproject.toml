@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "pythontemplate"
+version = "0.1.0"
+description = ""
+authors = ["Dillon <dillonb07dev@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+discord-py = "^2.3.2"
+motor = "^3.3.2"
+python-dotenv = "^1.0.0"
+discord = "^2.3.2"
+utils = "^1.0.1"
+bson = "^0.5.10"
+asyncio = "^3.4.3"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.285"
+pre-commit = "^3.3.3"
+sourcery = "^1.8.0"
+black = "^23.11.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
