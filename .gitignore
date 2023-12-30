@@ -168,3 +168,6 @@ cython_debug/
 
 # Club data
 clubs.csv
+
+# Replit
+.breakpoints
