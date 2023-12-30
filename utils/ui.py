@@ -1,6 +1,6 @@
 import discord
 
-from discord import ui, SelectOption
+from discord import ui
 from utils.data import COLORS
 
 from utils.messages import create_embed
@@ -19,7 +19,7 @@ class ClubCreation(ui.Modal, title="Create Club"):
     )
     topic = ui.TextInput(
         label="Club Description",
-        placeholder=f"Chat about anime & waifus here!",
+        placeholder="Chat about anime & waifus here!",
         style=discord.TextStyle.paragraph,
         required=True,
         min_length=3,
@@ -27,7 +27,7 @@ class ClubCreation(ui.Modal, title="Create Club"):
     )
     reason = ui.TextInput(
         label="Club Reason",
-        placeholder=f"I'd like this club to be created as anime is hated in #oof-topic so we want a safe space to chat",
+        placeholder="I'd like this club to be created as anime is hated in #oof-topic so we want a safe space to chat",
         style=discord.TextStyle.paragraph,
         required=True,
         max_length=500,

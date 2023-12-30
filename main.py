@@ -340,8 +340,7 @@ async def leave_club_choices(
         else [
             app_commands.Choice(name=club["name"], value=str(club["_id"]))
             for club in clubs
-            if club["_id"] in user["clubs"]
-            and club["owner"] != interaction.user.id
+            if club["_id"] in user["clubs"] and club["owner"] != interaction.user.id
         ]
     )
 
@@ -408,9 +407,7 @@ async def settings_callback(interaction: discord.Interaction):
 
                 new_name = interaction.data["components"][0]["components"][0]["value"]  # type: ignore
                 new_topic = interaction.data["components"][1]["components"][0]["value"]  # type: ignore
-                await edit_club(
-                    club_id=club["_id"], name=new_name, topic=new_topic
-                )
+                await edit_club(club_id=club["_id"], name=new_name, topic=new_topic)
                 guild = interaction.guild
                 # rename channel
                 channel = guild.get_channel(club["channel"])  # type: ignore
@@ -656,8 +653,7 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
         )
 
     if (
-        interaction.user.id not in club["mods"]
-        or "delete" not in club["mod_perms"]
+        interaction.user.id not in club["mods"] or "delete" not in club["mod_perms"]
     ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
@@ -682,9 +678,7 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
     channel = client.get_channel(CHANNELS["LOGS"])
     if type(channel) == TextChannel:
         await channel.send(embed=logbed)
-    return await interaction.response.send_message(
-        "Message deleted.", ephemeral=True
-    )
+    return await interaction.response.send_message("Message deleted.", ephemeral=True)
 
 
 @client.tree.context_menu(name="(Un)pin message")
@@ -703,8 +697,7 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
         )
 
     if (
-        interaction.user.id not in club["mods"]
-        or "pin" not in club["mod_perms"]
+        interaction.user.id not in club["mods"] or "pin" not in club["mod_perms"]
     ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
