@@ -1,34 +1,32 @@
-# Python Template
+> # ⚠️ This is still a **WORK IN PROGRESS** and has many issues currently ⚠️
 
-This is a template for Python projects. It includes everything needed for a project.
+# Club Bot
 
-## Requirements
+This is a full rewrite of Club Bot for the [Friends of Replit Discord server](https://discord.gg/friendsofreplit).
 
-- [Python](htt[s://python.org]) 3.10 or higher
-- [Poetry](https://python-poetry.org/)
+Club Bot is a bot that allows members to create their own channel which they can manage along with moderators they select. Any server member can join whatever club they want. For example, there could be an anime club, a Harry Potter club, etc
 
-## Setup
+## Features:
 
-1. Clone this repository
-2. Run `poetry install --group dev` to install all dependencies
-3. Run `poetry run sourcery login` to login to Sourcery and enable the Sourcery pre-commit hook
-4. Run `poetry run pre-commit install` to install the pre-commit hooks
-5. Run `poetry run pre-commit run --all-files` to run the pre-commit hooks on all files
+- Club requests
+- Club approval
+- Club rejection
+- Club joining
+- Owner
+    - Change club moderators
+    - Change club moderator permissions
+    - Change club name/topic
+- Mods
+    - Pin messages
+    - Delete messages
+    - Mute & unmute users (Temporary)
+    - Ban & unban users (Temporary and permanent)
+- Bubbles (Per-club temporary voice channels)
 
-## Hooks
-
-There are a variety of pre-commit hooks that are run on each commit. These include:
-
-- Black. This is a code formatter that formats the code to a standard format.
-- Ruff. This is a linter that checks the code for errors.
-- Sourcery. This is a code refactoring tool that refactors code that can be improved.
-
-If any of the hooks fail to run, the commit will be aborted. You can run the hooks manually by running `poetry run pre-commit run --all-files`.
-
-## Contributions
-
-Contributions are welcome. Please open an issue or pull request if you have any suggestions or improvements.
-
-Pull requests should be made to the `develop` branch. Pull requests to `main` will be rejected.
-
-Before committing, please make sure to run the pre-commit hooks which can be installed with `poetry run pre-commit install`. You can run them manually by running `poetry run pre-commit run --all-files`.
+## Todo
+- Club Logs - *Cannot be finished until everything else is finished*
+- Owner
+    - Club migration from Club Bot v2
+- Club Applications
+- Cooldowns
+- Club Admins
