@@ -274,7 +274,7 @@ async def leave_club(club_id: str, interaction):
             ),
             ephemeral=True,
         )
-    user = await users.find_one({"_id": interaction.user.id})
+
     update_result = await users.update_one(
         {"_id": interaction.user.id},
         {"$pull": {"clubs": ObjectId(club_id)}},
