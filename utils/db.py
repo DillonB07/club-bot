@@ -231,7 +231,7 @@ async def join_club(club_id: str, interaction):
     )
     if update_result.modified_count or update_result.upserted_id:
         modbed = await create_embed(
-            f"Club Joined",
+            "Club Joined",
             f"{interaction.user.mention}(`{interaction.user.name}`) has joined `{club['name']}`.",
             COLORS["JOIN_CLUB"],
         )
@@ -246,7 +246,7 @@ async def join_club(club_id: str, interaction):
         )
 
         embed = await create_embed(
-            f"Joined Club",
+            "Joined Club",
             f"You have joined the club: `{club['name']}`",
             COLORS["SUCCESS"],
         )
@@ -254,7 +254,7 @@ async def join_club(club_id: str, interaction):
         return True
     else:
         embed = await create_embed(
-            f"Already Joined",
+            "Already Joined",
             f"You have already joined the club: `{club['name']}`",
             COLORS["ERROR"],
         )
@@ -285,7 +285,7 @@ async def leave_club(club_id: str, interaction):
     )
     if update_result.modified_count or update_result.upserted_id:
         modbed = await create_embed(
-            f"Club Left",
+            "Club Left",
             f"{interaction.user.mention}(`{interaction.user.name}`) has left `{club['name']}`.",
             COLORS["LEAVE_CLUB"],
         )
@@ -295,7 +295,7 @@ async def leave_club(club_id: str, interaction):
         await channel.send(embed=modbed)
 
         embed = await create_embed(
-            f"Left Club",
+            "Left Club",
             f"You have left the club: `{club['name']}`",
             COLORS["SUCCESS"],
         )
@@ -309,8 +309,8 @@ async def leave_club(club_id: str, interaction):
         return True
     else:
         embed = await create_embed(
-            f"Not in club",
-            f"You cannot leave a club you're not in!",
+            "Not in club",
+            "You cannot leave a club you're not in!",
             COLORS["ERROR"],
         )
         await interaction.response.send_message(embed=embed)
@@ -376,7 +376,7 @@ async def create_join_bubble(interaction: discord.Interaction):
     )
 
     modbed = await create_embed(
-        f"Bubble Created",
+        "Bubble Created",
         f"{interaction.user.mention}(`{interaction.user.name}`) has created a bubble for `{club['name']}`.",
         COLORS["NEW_CLUB"],
     )
@@ -438,9 +438,9 @@ async def mute(interaction: discord.Interaction, user: discord.Member, time: int
                 color=COLORS["ERROR"],
             )
         )
+    # update channel overrides to mute user
+    overwrites = channel.overwrites
     if time > 0:
-        # update channel overrides to mute user
-        overwrites = channel.overwrites
         overwrites[user] = discord.PermissionOverwrite(
             view_channel=True,
             send_messages=False,
@@ -473,7 +473,6 @@ async def mute(interaction: discord.Interaction, user: discord.Member, time: int
             COLORS["MUTE"],
         )
     else:
-        overwrites = channel.overwrites
         # remove the users overrides as they're unmuted
         if user in overwrites:
             del overwrites[user]
