@@ -224,7 +224,7 @@ async def unmute_ban_users():
 async def on_ready() -> None:
     channels = 0
     for guild in client.guilds:
-        for channel in guild.channels:
+        for _ in guild.channels:
             channels += 1
 
     print("Connecting to db....")
@@ -267,13 +267,11 @@ async def verify_club_choices(
 
     clubs = cache["clubs"]["data"]
 
-    choices = [
+    return [
         app_commands.Choice(name=club["name"], value=club["_id"])
         for club in clubs
         if not club.get("verified")
     ]
-
-    return choices
 
 
 @client.tree.command(name="approve", description="Approve a club")
@@ -300,23 +298,21 @@ async def join_club_choices(
 
     clubs = cache["clubs"]["data"]
 
-    # Check the user document and their clubs list
-    if not user or not user.get("clubs"):
-        choices = [
+    return (
+        [
             app_commands.Choice(name=club["name"], value=str(club["_id"]))
             for club in clubs
             if club.get("verified")
         ]
-    else:
-        # Filter clubs to exclude those the user is already part of, and clubs the user is banned from
-        choices = [
+        if not user or not user.get("clubs")
+        else [
             app_commands.Choice(name=club["name"], value=str(club["_id"]))
             for club in clubs
             if club["_id"] not in user["clubs"]
             and club.get("verified")
             and club["_id"] not in user["bans"]
         ]
-    return choices
+    )
 
 
 @client.tree.command(name="join", description="Join a club")
@@ -338,17 +334,16 @@ async def leave_club_choices(
 
     clubs = cache["clubs"]["data"]
 
-    # Check the user document and their clubs list
-    if not user or not user.get("clubs"):
-        choices = []
-    else:
-        # Filter clubs to include those the user is already part of
-        choices = [
+    return (
+        []
+        if not user or not user.get("clubs")
+        else [
             app_commands.Choice(name=club["name"], value=str(club["_id"]))
             for club in clubs
-            if club["_id"] in user["clubs"] and club["owner"] != interaction.user.id
+            if club["_id"] in user["clubs"]
+            and club["owner"] != interaction.user.id
         ]
-    return choices
+    )
 
 
 @client.tree.command(name="leave", description="Leave a club")
@@ -374,7 +369,7 @@ async def settings_callback(interaction: discord.Interaction):
             )
         )
 
-    match interaction.data["values"][0]:  # type: ignore
+    match interaction.data["values"][0]:
         case "name_topic":
             modal = discord.ui.Modal(title="Edit Club Name and Topic")
             modal.add_item(
@@ -413,7 +408,9 @@ async def settings_callback(interaction: discord.Interaction):
 
                 new_name = interaction.data["components"][0]["components"][0]["value"]  # type: ignore
                 new_topic = interaction.data["components"][1]["components"][0]["value"]  # type: ignore
-                await edit_club(club_id=club["_id"], name=new_name, topic=new_topic)
+                await edit_club(
+                    club_id=club["_id"], name=new_name, topic=new_topic
+                )
                 guild = interaction.guild
                 # rename channel
                 channel = guild.get_channel(club["channel"])  # type: ignore
@@ -499,28 +496,28 @@ async def settings_callback(interaction: discord.Interaction):
                         description="Delete messages from any user in the club",
                         value="delete",
                         emoji=PartialEmoji(name="🗑️"),
-                        default=False if "delete" not in club["mod_perms"] else True,
+                        default="delete" in club["mod_perms"],
                     ),
                     discord.SelectOption(
                         label="Pin messages",
                         description="Pin and unpin messages from any user in the club",
                         value="pin",
                         emoji=PartialEmoji(name="📌"),
-                        default=False if "pin" not in club["mod_perms"] else True,
+                        default="pin" in club["mod_perms"],
                     ),
                     discord.SelectOption(
                         label="Mute members",
                         description="Temp/perm mute any user in the club",
                         value="mute",
                         emoji=PartialEmoji(name="🤫"),
-                        default=False if "mute" not in club["mod_perms"] else True,
+                        default="mute" in club["mod_perms"],
                     ),
                     discord.SelectOption(
                         label="Ban members",
                         description="Temp/perm ban any user in the club",
                         value="ban",
                         emoji=PartialEmoji(name="🔨"),
-                        default=False if "ban" not in club["mod_perms"] else True,
+                        default="ban" in club["mod_perms"],
                     ),
                 ],
                 min_values=0,
@@ -659,28 +656,9 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
         )
 
     if (
-        interaction.user.id in club["mods"] and "delete" in club["mod_perms"]
-    ) or interaction.user.id == club["owner"]:
-        await message.delete()
-
-        logbed = await create_embed(
-            title="Message Deleted",
-            description=f"""
-**Message**: {message.content}
-**Author**: {message.author.mention} (`{message.author.name}`)
-**Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}'`)
-**Club**: {club['name']}
-            """,
-            color=COLORS["DELETE"],
-        )
-        logbed.set_footer(text=f"Club ID: {club['_id']}")
-        channel = client.get_channel(CHANNELS["LOGS"])
-        if type(channel) == TextChannel:
-            await channel.send(embed=logbed)
-        return await interaction.response.send_message(
-            "Message deleted.", ephemeral=True
-        )
-    else:
+        interaction.user.id not in club["mods"]
+        or "delete" not in club["mod_perms"]
+    ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
                 description="You are not a moderator of this club or do not have the necessary permission :-(",
@@ -688,6 +666,25 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
             ),
             ephemeral=True,
         )
+    await message.delete()
+
+    logbed = await create_embed(
+        title="Message Deleted",
+        description=f"""
+**Message**: {message.content}
+**Author**: {message.author.mention} (`{message.author.name}`)
+**Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}'`)
+**Club**: {club['name']}
+            """,
+        color=COLORS["DELETE"],
+    )
+    logbed.set_footer(text=f"Club ID: {club['_id']}")
+    channel = client.get_channel(CHANNELS["LOGS"])
+    if type(channel) == TextChannel:
+        await channel.send(embed=logbed)
+    return await interaction.response.send_message(
+        "Message deleted.", ephemeral=True
+    )
 
 
 @client.tree.context_menu(name="(Un)pin message")
@@ -706,40 +703,9 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
         )
 
     if (
-        interaction.user.id in club["mods"] and "pin" in club["mod_perms"]
-    ) or interaction.user.id == club["owner"]:
-        if message.pinned:
-            await message.unpin()
-        else:
-            try:
-                await message.pin()
-            except discord.HTTPException:
-                await interaction.response.send_message(
-                    "There are more than 50 pinned messages in this channel, try unpinning some first",
-                    ephemeral=False,
-                )
-
-        await interaction.channel.send(  # type: ignore
-            f"{interaction.user.mention} {'' if message.pinned else 'un'}pinned {message.jump_url}.",
-            suppress_embeds=True,
-        )
-
-        logbed = await create_embed(
-            title=f"Message {'Pinned' if message.pinned else 'Unpinned'}",
-            description=f"""
-**Message**: {message.jump_url}
-**Author**: {message.author.mention} (`{message.author.name}`)
-**Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}`)
-**Club**: {club['name']}
-            """,
-            color=COLORS["PIN"],
-        )
-
-        logbed.set_footer(text=f"Club ID: {club['_id']}")
-        channel = client.get_channel(CHANNELS["LOGS"])
-        if type(channel) == TextChannel:
-            await channel.send(embed=logbed)
-    else:
+        interaction.user.id not in club["mods"]
+        or "pin" not in club["mod_perms"]
+    ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
                 description="You are not a moderator of this club or do not have the necessary permission :-(",
@@ -747,6 +713,37 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
             ),
             ephemeral=True,
         )
+    if message.pinned:
+        await message.unpin()
+    else:
+        try:
+            await message.pin()
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "There are more than 50 pinned messages in this channel, try unpinning some first",
+                ephemeral=False,
+            )
+
+    await interaction.channel.send(  # type: ignore
+        f"{interaction.user.mention} {'' if message.pinned else 'un'}pinned {message.jump_url}.",
+        suppress_embeds=True,
+    )
+
+    logbed = await create_embed(
+        title=f"Message {'Pinned' if message.pinned else 'Unpinned'}",
+        description=f"""
+**Message**: {message.jump_url}
+**Author**: {message.author.mention} (`{message.author.name}`)
+**Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}`)
+**Club**: {club['name']}
+            """,
+        color=COLORS["PIN"],
+    )
+
+    logbed.set_footer(text=f"Club ID: {club['_id']}")
+    channel = client.get_channel(CHANNELS["LOGS"])
+    if type(channel) == TextChannel:
+        await channel.send(embed=logbed)
 
 
 async def mute_choices(
