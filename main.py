@@ -1,4 +1,3 @@
-import csv
 import os
 
 from datetime import datetime, timedelta, timezone
@@ -228,7 +227,7 @@ async def send_log(logs_channel, title, duser, club, color):
         COLORS["UNBAN"],
     )
     log.set_footer(text=f"Club ID: {club['_id']}")
-    return await logs.send(embed=log)
+    return await logs_channel.send(embed=log)
 
 
 @client.event
