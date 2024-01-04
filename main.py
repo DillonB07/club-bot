@@ -67,7 +67,7 @@ async def handle_error(
 
 
 client.tree.on_error = handle_error
-client.on_error = handle_error  # type: ignore
+client.on_error = handle_error
 
 cache = {"clubs": None, "users": None, "timestamp": datetime.min}
 bubbles = {}
@@ -184,7 +184,7 @@ async def unmute_ban_users():
                             {"_id": user["_id"]}, {"$pull": {"mutes": umute}}
                         )
                         # notify user
-                        await duser.send(f"Your mute has expired in {club['name']}")  # type: ignore
+                        await duser.send(f"Your mute has expired in {club['name']}")
                         log = await create_embed(
                             "Member Unmuted (Expired)",
                             f"""
@@ -400,33 +400,33 @@ async def settings_callback(interaction: discord.Interaction):
                     return await interaction.followup.send(
                         embed=await create_embed(
                             title="Error",
-                            description="Whoops, something went wrong. Try again later!",
+                            description="Whoops, something went wrong. Try again later",
                             color=COLORS["ERROR"],
                         )
                     )
 
-                new_name = interaction.data["components"][0]["components"][0]["value"]  # type: ignore
-                new_topic = interaction.data["components"][1]["components"][0]["value"]  # type: ignore
+                new_name = interaction.data["components"][0]["components"][0]["value"]
+                new_topic = interaction.data["components"][1]["components"][0]["value"]
                 await edit_club(club_id=club["_id"], name=new_name, topic=new_topic)
                 guild = interaction.guild
                 # rename channel
-                channel = guild.get_channel(club["channel"])  # type: ignore
-                await channel.edit(name=new_name, topic=new_topic)  # type: ignore
-                role = guild.get_role(club["role"])  # type: ignore
-                await role.edit(name="f{new_name} Member")  # type: ignore
+                channel = guild.get_channel(club["channel"])
+                await channel.edit(name=new_name, topic=new_topic)
+                role = guild.get_role(club["role"])
+                await role.edit(name="f{new_name} Member")
                 await interaction.followup.send("success")
                 description = f"""
 {f"**Old Name**: {club['name']}  **New Name**: {new_name}" if club['name'] != new_name else '' }
 {f"**Old Topic**: {club['topic']}  **New Topic**: {new_topic}" if club['topic'] != new_topic else '' }
-                """
+                """  
                 logbed = await create_embed(
                     title=f"`{club['name']}` details Updated",
                     description=description,
                     color=COLORS["SETTINGS"],
                 )
                 logbed.set_footer(text=f"Club ID: {club['_id']}")
-                channel = guild.get_channel(CHANNELS["LOGS"])  # type: ignore
-                await channel.send(embed=logbed)  # type: ignore
+                channel = guild.get_channel(CHANNELS["LOGS"])
+                await channel.send(embed=logbed)
 
             modal.on_submit = callback
 
@@ -434,7 +434,12 @@ async def settings_callback(interaction: discord.Interaction):
         case "mods":
             embed = await create_embed(
                 ":crossed_swords: Moderators",
-                "Please choose your moderators here. Your mods can use their permissions via the `Apps` section of a messages context menu.\n**This will remove all current moderators and replace them with who you select.**\n*(I can't prefill it due to Discord limitations :sob:)*",
+                """
+Please choose your moderators here.
+Your mods can use their permissions via the `Apps` section of a messages context menu.
+**This will remove all current moderators and replace them with who you select.**
+*(I can't prefill it due to Discord limitations :sob:)*
+""",
                 color=COLORS["INFO"],
             )
             view = discord.ui.View()
@@ -461,17 +466,26 @@ async def settings_callback(interaction: discord.Interaction):
                     color=COLORS["SUCCESS"],
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
+                new_mods = [
+                    f"{user.mention} (`{user.name}`)"
+                    for user in options.values
+                    if isinstance(user, discord.Member)
+                ]
+                old_mods = [
+                    f"{guild.get_member(int(user)).mention} (`{guild.get_member(int(user)).name}`)"  
+                    for user in club["mods"]
+                ]
                 logbed = await create_embed(
                     title=f"`{club['name']}` Moderators Updated",
                     description=f"""
-**New Mods**: {", ".join([f'{user.mention} (`{user.name}`)' for user in options.values if isinstance(user, discord.Member)])}
-**Old Mods**: {", ".join([f'{guild.get_member(int(user)).mention} (`{guild.get_member(int(user)).name}`)' for user in club['mods']])}
+**New Mods**: {", ".join(new_mods)}
+**Old Mods**: {", ".join(old_mods)}
                     """,
                     color=COLORS["SETTINGS"],
                 )
                 logbed.set_footer(text=f"Club ID: {club['_id']}")
                 channel = guild.get_channel(CHANNELS["LOGS"])
-                await channel.send(embed=logbed)  # type: ignore
+                await channel.send(embed=logbed)
 
             options.callback = callback
 
@@ -482,9 +496,10 @@ async def settings_callback(interaction: discord.Interaction):
         case "mod_perms":
             embed = await create_embed(
                 ":shield: Mod Permissions",
-                "Please choose all of the permissions you want your mods to have. This will override any previous settings you may have. Your mods can use these permissions via the `Apps` option after right clicking/long pressing on a message. These permissions do not affect bubbles.",
+                "Please choose all of the permissions you want your mods to have. This will override any previous settings you may have. Your mods can use these permissions via the `Apps` option after right clicking/long pressing on a message. These permissions do not affect bubbles.",  
                 color=COLORS["INFO"],
             )
+
             view = discord.ui.View()
             options = discord.ui.Select(
                 options=[
@@ -539,8 +554,8 @@ async def settings_callback(interaction: discord.Interaction):
                     color=COLORS["SETTINGS"],
                 )
                 logbed.set_footer(text=f"Club ID: {club['_id']}")
-                channel = interaction.guild.get_channel(CHANNELS["LOGS"])  # type: ignore
-                await channel.send(embed=logbed)  # type: ignore
+                channel = interaction.guild.get_channel(CHANNELS["LOGS"])
+                await channel.send(embed=logbed)
 
             options.callback = callback
 
@@ -552,7 +567,7 @@ async def settings_callback(interaction: discord.Interaction):
 
 @client.tree.command(name="settings", description="Manage your club")
 async def settings(interaction: Interaction):
-    club = await get_club_by_channel(interaction.channel.id)  # type: ignore
+    club = await get_club_by_channel(interaction.channel.id)
     if not club:
         return await interaction.response.send_message(
             embed=discord.Embed(
@@ -657,7 +672,7 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
     ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
-                description="You are not a moderator of this club or do not have the necessary permission :-(",
+                description="You are not a moderator of this club or you do not have permission :-(",  
                 color=COLORS["NO_PERMS"],
             ),
             ephemeral=True,
@@ -671,7 +686,7 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
 **Author**: {message.author.mention} (`{message.author.name}`)
 **Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}'`)
 **Club**: {club['name']}
-            """,
+            """,  
         color=COLORS["DELETE"],
     )
     logbed.set_footer(text=f"Club ID: {club['_id']}")
@@ -701,7 +716,7 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
     ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
-                description="You are not a moderator of this club or do not have the necessary permission :-(",
+                description="You are not a moderator of this club or do not have permission :-(",  
                 color=COLORS["NO_PERMS"],
             ),
             ephemeral=True,
@@ -713,12 +728,12 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
             await message.pin()
         except discord.HTTPException:
             await interaction.response.send_message(
-                "There are more than 50 pinned messages in this channel, try unpinning some first",
+                "There are more than 50 pinned messages in this channel, try unpinning some first",  
                 ephemeral=False,
             )
 
-    await interaction.channel.send(  # type: ignore
-        f"{interaction.user.mention} {'' if message.pinned else 'un'}pinned {message.jump_url}.",
+    await interaction.channel.send(
+        f"{interaction.user.mention} {'' if message.pinned else 'un'}pinned {message.jump_url}.",  
         suppress_embeds=True,
     )
 
@@ -729,7 +744,7 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
 **Author**: {message.author.mention} (`{message.author.name}`)
 **Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}`)
 **Club**: {club['name']}
-            """,
+            """,  
         color=COLORS["PIN"],
     )
 
@@ -809,7 +824,7 @@ async def ban_choices(
 )
 @app_commands.autocomplete(time=ban_choices)
 async def ban_user(interaction: discord.Interaction, user: discord.Member, time: str):
-    # Parse the 'time' argument to determine if it's a permanent ban or a duration in minutes
+    # Parse the 'time' argument to determine if it's a permanent or temp ban
     if time.isdigit():
         # Convert duration to integer if it's a digit string
         duration = int(time)

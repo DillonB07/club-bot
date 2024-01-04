@@ -27,7 +27,7 @@ class ClubCreation(ui.Modal, title="Create Club"):
     )
     reason = ui.TextInput(
         label="Club Reason",
-        placeholder="I'd like this club to be created as anime is hated in #oof-topic so we want a safe space to chat",
+        placeholder="I'd like this club to be created as anime is hated in #oof-topic so we want a safe space to chat",  
         style=discord.TextStyle.paragraph,
         required=True,
         max_length=500,
@@ -43,7 +43,7 @@ class ClubCreation(ui.Modal, title="Create Club"):
         await interaction.response.send_message(
             embed=await create_embed(
                 "Club Creation Error",
-                f"{interaction.user.display_name}, there was an error while creating your club. Please try again later.",
+                f"{interaction.user.display_name}, there was an error while creating your club. Please try again later.",  
                 color=COLORS["ERROR"],
             ),
             ephemeral=True,
@@ -53,7 +53,7 @@ class ClubCreation(ui.Modal, title="Create Club"):
         await interaction.response.send_message(
             embed=await create_embed(
                 "Club Creation Error",
-                f"{interaction.user.display_name}, there was an error while creating your club. Please try again later.",
+                f"{interaction.user.display_name}, there was an error while creating your club. Please try again later.",  
                 color=COLORS["ERROR"],
             ),
             ephemeral=True,
