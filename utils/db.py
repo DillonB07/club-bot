@@ -5,11 +5,14 @@ from datetime import datetime, timedelta
 import discord
 
 from bson import ObjectId
+from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.server_api import ServerApi
 from utils.data import CHANNELS, COLORS, EMOJIS, NEW_CLUB_MESSAGE, CLUBS_CATEGORY, ROLES
 
 from utils.messages import create_embed
+
+load_dotenv()
 
 # Set the Stable API version when creating a new client
 db_client = AsyncIOMotorClient(os.environ["MONGO_URI"], server_api=ServerApi("1"))
@@ -99,7 +102,7 @@ async def verify_club(verify, club_id, interaction):
             return await interaction.response.send_message(
                 embed=await create_embed(
                     "Club Verification Error",
-                    f"{interaction.user.display_name}, this club has already been verified.",  
+                    f"{interaction.user.display_name}, this club has already been verified.",
                     color=COLORS["ERROR"],
                 ),
                 ephemeral=True,
@@ -157,7 +160,7 @@ async def verify_club(verify, club_id, interaction):
 
         logbed = await create_embed(
             f"Club {word.capitalize()}",
-            f"`{club['name']}` has been {word} by {interaction.user.mention}(`{interaction.user.name}`.)",  
+            f"`{club['name']}` has been {word} by {interaction.user.mention}(`{interaction.user.name}`.)",
             color,
         )
         logbed.set_footer(text=f"Club ID: {club_id}")
@@ -232,7 +235,7 @@ async def join_club(club_id: str, interaction):
     if update_result.modified_count or update_result.upserted_id:
         modbed = await create_embed(
             "Club Joined",
-            f"{interaction.user.mention}(`{interaction.user.name}`) has joined `{club['name']}`.",  
+            f"{interaction.user.mention}(`{interaction.user.name}`) has joined `{club['name']}`.",
             COLORS["JOIN_CLUB"],
         )
         modbed.set_footer(text=f"Club ID: {club['_id']}")
@@ -242,7 +245,7 @@ async def join_club(club_id: str, interaction):
 
         channel = interaction.guild.get_channel(club["channel"])
         await channel.send(
-            f"*{interaction.user.mention} has joined the **{club['name']}** club <:{EMOJIS['REPLJOY']['name']}:{EMOJIS['REPLJOY']['id']}>*"  
+            f"*{interaction.user.mention} has joined the **{club['name']}** club <:{EMOJIS['REPLJOY']['name']}:{EMOJIS['REPLJOY']['id']}>*"
         )
 
         embed = await create_embed(
@@ -286,7 +289,7 @@ async def leave_club(club_id: str, interaction):
     if update_result.modified_count or update_result.upserted_id:
         modbed = await create_embed(
             "Club Left",
-            f"{interaction.user.mention}(`{interaction.user.name}`) has left `{club['name']}`.",  
+            f"{interaction.user.mention}(`{interaction.user.name}`) has left `{club['name']}`.",
             COLORS["LEAVE_CLUB"],
         )
         modbed.set_footer(text=f"Club ID: {club['_id']}")
@@ -302,7 +305,7 @@ async def leave_club(club_id: str, interaction):
 
         channel = interaction.guild.get_channel(club["channel"])
         await channel.send(
-            f"*{interaction.user.mention} has left the **{club['name']}** club <:{EMOJIS['REPLSAD']['name']}:{EMOJIS['REPLSAD']['id']}>*"  
+            f"*{interaction.user.mention} has left the **{club['name']}** club <:{EMOJIS['REPLSAD']['name']}:{EMOJIS['REPLSAD']['id']}>*"
         )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -375,7 +378,7 @@ async def create_join_bubble(interaction: discord.Interaction):
 
     modbed = await create_embed(
         "Bubble Created",
-        f"{interaction.user.mention}(`{interaction.user.name}`) has created a bubble for `{club['name']}`.",  
+        f"{interaction.user.mention}(`{interaction.user.name}`) has created a bubble for `{club['name']}`.",
         COLORS["NEW_CLUB"],
     )
     modbed.set_footer(text=f"Club ID: {club['_id']}")
@@ -385,7 +388,7 @@ async def create_join_bubble(interaction: discord.Interaction):
 
     embed = await create_embed(
         "Bubble Created",
-        f"{interaction.user.mention} has created a bubble! Go hop in at {bubble.mention}! It will be popped shortly if not in use",  
+        f"{interaction.user.mention} has created a bubble! Go hop in at {bubble.mention}! It will be popped shortly if not in use",
         COLORS["NEW_CLUB"],
     )
 
@@ -421,7 +424,7 @@ async def mute(interaction: discord.Interaction, user: discord.Member, time: int
         user.id in club.get("mods")
         or user.id == club.get("owner")
         or interaction.guild.get_role(ROLES["MODS"]) in user.roles
-    ):  
+    ):
         return await interaction.response.send_message(
             embed=await create_embed(
                 "Mute Failed",
@@ -456,12 +459,12 @@ async def mute(interaction: discord.Interaction, user: discord.Member, time: int
         await interaction.response.send_message(
             embed=await create_embed(
                 "Club Mute Success",
-                f"{user.mention} has been muted for {time} minutes. It expires <t:{expiry}:R>",  
+                f"{user.mention} has been muted for {time} minutes. It expires <t:{expiry}:R>",
                 color=COLORS["SUCCESS"],
             )
         )
         await user.send(
-            f'You have been muted in {club["name"]} club for {time} minutes by {interaction.user.display_name}. This will expire <t:{expiry}:R>'  
+            f'You have been muted in {club["name"]} club for {time} minutes by {interaction.user.display_name}. This will expire <t:{expiry}:R>'
         )
         log = await create_embed(
             "Club Mute",
@@ -488,7 +491,7 @@ async def mute(interaction: discord.Interaction, user: discord.Member, time: int
             )
         )
         await user.send(
-            f'You have been unmuted in {club["name"]} club by {interaction.user.display_name}'  
+            f'You have been unmuted in {club["name"]} club by {interaction.user.display_name}'
         )
 
         log = await create_embed(
@@ -515,7 +518,7 @@ async def update_user_mutes(user_id: int, club_id: str, duration: int = 0):
         duration (int, optional): The duration of the mute in minutes. If 0 or less, the mute is removed.
     Returns:
         int: The Unix time when the mute will expire, or None if the user was unmuted.
-    """  
+    """
     club_obj_id = ObjectId(club_id)
     if duration > 0:
         mute_expiration = datetime.utcnow() + timedelta(minutes=duration)
@@ -559,7 +562,7 @@ async def ban(
         interaction (discord.Interaction): The interaction object containing the context of the command.
         user (discord.Member): The member object representing the user to be banned or unbanned.
         duration (int | bool): The duration for which the user is to be banned, in minutes. If set to False or a non-positive integer, the ban is lifted. If set to True, the user is banned indefinitely.
-    """  
+    """
     club = await get_club_by_channel(interaction.channel_id)
     clubber = await users.find_one({"_id": user.id})
 
@@ -587,7 +590,7 @@ async def ban(
         user.id in club.get("mods")
         or user.id == club.get("owner")
         or interaction.guild.get_role(ROLES["MODS"]) in user.roles
-    ):  
+    ):
         return await interaction.response.send_message(
             embed=await create_embed(
                 "Ban Failed",
@@ -632,7 +635,7 @@ async def ban(
 Hey {user.display_name},
 Unfortunately, you have been permanently banned from {club['name']} club by {interaction.user.mention}(`{interaction.user.name}`).
 If a moderator decides to unban you in the future, I'll let you know here!
-""",  
+""",
                 color=COLORS["BAN"],
             )
         )
@@ -640,7 +643,7 @@ If a moderator decides to unban you in the future, I'll let you know here!
         await interaction.response.send_message(
             embed=await create_embed(
                 f"Permanently Banned {user.mention}",
-                f"{user.mention} has been permanently banned by {interaction.user.mention}.",  
+                f"{user.mention} has been permanently banned by {interaction.user.mention}.",
                 color=COLORS["SUCCESS"],
             )
         )
@@ -677,7 +680,7 @@ If a moderator decides to unban you in the future, I'll let you know here!
 Hey {user.display_name},
 Unfortunately, you have been temporarily banned from {club['name']} club by {interaction.user.mention}(`{interaction.user.name}`).
 Your ban will expire <t:{timestamp}:R> or a moderator may decide to unban you.
-""",  
+""",
                 color=COLORS["BAN"],
             )
         )
@@ -702,7 +705,7 @@ Your ban will expire <t:{timestamp}:R> or a moderator may decide to unban you.
         await user.send(
             embed=await create_embed(
                 "Unbanned from Club",
-                f"You have been unbanned from {club['name']} club by {interaction.user.mention} (`{interaction.user.name}`)",  
+                f"You have been unbanned from {club['name']} club by {interaction.user.mention} (`{interaction.user.name}`)",
                 COLORS["UNBAN"],
             )
         )

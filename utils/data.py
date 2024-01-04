@@ -73,4 +73,4 @@ You are able to assign moderators to your club. You can change the permissions t
 
 **Webhooks**:
 You can create webhooks to post messages to your club. Webhooks are not allowed to ping @everyone/@here - Doing this **will** result in removal of your club ownership.
-"""  
+"""

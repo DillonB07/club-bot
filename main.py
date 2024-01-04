@@ -1,6 +1,7 @@
+import csv
 import os
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
 
@@ -23,8 +24,6 @@ from utils.db import (
 )
 from utils.messages import create_embed
 from utils.ui import ClubCreation
-
-load_dotenv()
 
 
 class Client(discord.Client):
@@ -78,10 +77,8 @@ async def update_club_cache(force_update: bool = False):
     global cache
     cache_stale_time = timedelta(seconds=30)
 
-    current_time = datetime.utcnow()
-    last_updated = cache["timestamp"]
-    if not last_updated:
-        last_updated = datetime.min
+    current_time = datetime.now(timezone.utc)
+    last_updated = cache["timestamp"] or datetime.min
 
     if force_update or (current_time - last_updated) > cache_stale_time:
         try:
@@ -120,104 +117,118 @@ async def update_bubbles():
     for club in clubs_list:
         if club.get("bubble"):
             bubble = guild.get_channel(club["bubble"])
-            if type(bubble) == discord.VoiceChannel:
-                if len(bubble.members) == 0:
-                    # if no one is in vc, delete bubble
-                    await bubble.delete(reason=f"Club {club['name']} bubble popped")
-                    # delete bubble
-                    await db.clubs.update_one(
-                        {"_id": club["_id"]}, {"$set": {"bubble": None}}
-                    )
+            if type(bubble) == discord.VoiceChannel and len(bubble.members) == 0:
+                await bubble.delete(reason=f"Club {club['name']} bubble popped")
+                # delete bubble
+                await db.clubs.update_one(
+                    {"_id": club["_id"]}, {"$set": {"bubble": None}}
+                )
 
-                    embed = await create_embed(
-                        "Bubble Popped",
-                        f"Bubble for `{club['name']}` has been popped",
-                        COLORS["LEAVE_CLUB"],
-                    )
-                    embed.set_footer(text=f"Club ID: {club['_id']}")
+                embed = await create_embed(
+                    "Bubble Popped",
+                    f"Bubble for `{club['name']}` has been popped",
+                    COLORS["LEAVE_CLUB"],
+                )
+                embed.set_footer(text=f"Club ID: {club['_id']}")
 
-                    await logs.send(embed=embed)
-                    channel = guild.get_channel(club["channel"])
-                    if isinstance(channel, TextChannel):
-                        await channel.send(
-                            embed=await create_embed(
-                                "Bubble Popped",
-                                f'{club["name"]} bubble has been popped',
-                                COLORS["LEAVE_CLUB"],
-                            )
+                await logs.send(embed=embed)
+                channel = guild.get_channel(club["channel"])
+                if isinstance(channel, TextChannel):
+                    await channel.send(
+                        embed=await create_embed(
+                            "Bubble Popped",
+                            f'{club["name"]} bubble has been popped',
+                            COLORS["LEAVE_CLUB"],
                         )
+                    )
     return
 
 
 @tasks.loop(seconds=30)
 async def unmute_ban_users():
     guild = client.get_guild(GUILD_ID)
-    if not guild:
-        return
     logs = guild.get_channel(CHANNELS["LOGS"])
-    if type(logs) != TextChannel:
-        return
+    current_time = datetime.now(timezone.utc)
+
     # get all users from db
     projection = {"_id": 1, "mutes": 1, "bans": 1}
-    users_cursor = db.users.find(projection=projection)
+    users_cursor = db.users.find(
+        {"_id": {"$in": [member.id for member in guild.members]}}, projection=projection
+    )
     users_list = await users_cursor.to_list(length=None)
+
     for user in users_list:
         duser = guild.get_member(user["_id"])
-        if not duser:
-            continue
-        if user.get("mutes"):
-            for umute in user["mutes"]:
-                if umute["expiration"] <= datetime.utcnow():
-                    club = await db.clubs.find_one({"_id": umute["club_id"]})
-                    if not club:
-                        continue
-                    # remove channel overrides to unmute user
-                    channel = guild.get_channel(club["channel"])
-                    if type(channel) == TextChannel:
-                        overwrites = channel.overwrites
-                        if duser in overwrites:
-                            del overwrites[duser]
-                        await channel.edit(overwrites=overwrites)
 
-                        # unmute user in db
-                        await db.users.update_one(
-                            {"_id": user["_id"]}, {"$pull": {"mutes": umute}}
-                        )
-                        # notify user
-                        await duser.send(f"Your mute has expired in {club['name']}")
-                        log = await create_embed(
-                            "Member Unmuted (Expired)",
-                            f"""
-**User:** {duser.mention} (`{duser.name}`) 
-**Club:** {club['name']}
-                        """,
-                            COLORS["UNMUTE"],
-                        )
-                        log.set_footer(text=f"Club ID: {club['_id']}")
-                        await logs.send(embed=log)
-        if user.get("bans"):
-            for uban in user["bans"]:
-                if uban.get("expiration") and uban["expiration"] <= datetime.utcnow():
-                    club = await db.clubs.find_one({"_id": uban["club_id"]})
-                    if not club:
-                        continue
+        # Process unmutes
+        if expired_mutes := [
+            umute
+            for umute in user.get("mutes", [])
+            if umute["expiration"] <= current_time
+        ]:
+            club_ids = [umute["club_id"] for umute in expired_mutes]
+            clubs = await db.clubs.find({"_id": {"$in": club_ids}}).to_list(length=None)
+            clubs_dict = {club["_id"]: club for club in clubs}
 
-                    # unban user in db
+            for umute in expired_mutes:
+                club = clubs_dict.get(umute["club_id"])
+                if not club:
+                    continue
+                channel = guild.get_channel(club["channel"])
+                if isinstance(channel, TextChannel):
+                    overwrites = channel.overwrites
+                    if duser in overwrites:
+                        del overwrites[duser]
+                    await channel.edit(overwrites=overwrites)
                     await db.users.update_one(
-                        {"_id": user["_id"]}, {"$pull": {"bans": uban}}
+                        {"_id": user["_id"]}, {"$pull": {"mutes": umute}}
+                    )
+                    await duser.send(f"Your mute has expired in {club['name']}")
+                    await send_log(
+                        logs, "Member Unmuted (Expired)", duser, club, COLORS["UNMUTE"]
                     )
 
-                    log = await create_embed(
-                        "Member Unbanned (Expired)",
-                        f"""
+        # Process unbans
+        if expired_bans := [
+            uban
+            for uban in user.get("bans", [])
+            if uban.get("expiration") and uban["expiration"] <= current_time
+        ]:
+            club_ids = [uban["club_id"] for uban in expired_bans]
+            clubs = await db.clubs.find({"_id": {"$in": club_ids}}).to_list(length=None)
+            clubs_dict = {club["_id"]: club for club in clubs}
+
+            for uban in expired_bans:
+                club = clubs_dict.get(uban["club_id"])
+                if not club:
+                    continue
+                await db.users.update_one(
+                    {"_id": user["_id"]}, {"$pull": {"bans": uban}}
+                )
+                await send_log(
+                    logs, "Member Unbanned (Expired)", duser, club, COLORS["UNBAN"]
+                )
+
+
+async def send_log(logs_channel, title, duser, club, color):
+    log = await create_embed(
+        title,
+        f"**User:** {duser.mention} (`{duser.name}`)\n**Club:** {club['name']}",
+        color,
+    )
+    log.set_footer(text=f"Club ID: {club['_id']}")
+    await logs_channel.send(embed=log)
+
+    log = await create_embed(
+        "Member Unbanned (Expired)",
+        f"""
 **User:** {duser.mention} (`{duser.name}`) 
 **Club:** {club['name']}
-                    """,
-                        COLORS["UNBAN"],
-                    )
-                    log.set_footer(text=f"Club ID: {club['_id']}")
-                    await logs.send(embed=log)
-    return
+        """,
+        COLORS["UNBAN"],
+    )
+    log.set_footer(text=f"Club ID: {club['_id']}")
+    return await logs.send(embed=log)
 
 
 @client.event
@@ -418,7 +429,7 @@ async def settings_callback(interaction: discord.Interaction):
                 description = f"""
 {f"**Old Name**: {club['name']}  **New Name**: {new_name}" if club['name'] != new_name else '' }
 {f"**Old Topic**: {club['topic']}  **New Topic**: {new_topic}" if club['topic'] != new_topic else '' }
-                """  
+                """
                 logbed = await create_embed(
                     title=f"`{club['name']}` details Updated",
                     description=description,
@@ -472,7 +483,7 @@ Your mods can use their permissions via the `Apps` section of a messages context
                     if isinstance(user, discord.Member)
                 ]
                 old_mods = [
-                    f"{guild.get_member(int(user)).mention} (`{guild.get_member(int(user)).name}`)"  
+                    f"{guild.get_member(int(user)).mention} (`{guild.get_member(int(user)).name}`)"
                     for user in club["mods"]
                 ]
                 logbed = await create_embed(
@@ -496,7 +507,7 @@ Your mods can use their permissions via the `Apps` section of a messages context
         case "mod_perms":
             embed = await create_embed(
                 ":shield: Mod Permissions",
-                "Please choose all of the permissions you want your mods to have. This will override any previous settings you may have. Your mods can use these permissions via the `Apps` option after right clicking/long pressing on a message. These permissions do not affect bubbles.",  
+                "Please choose all of the permissions you want your mods to have. This will override any previous settings you may have. Your mods can use these permissions via the `Apps` option after right clicking/long pressing on a message. These permissions do not affect bubbles.",
                 color=COLORS["INFO"],
             )
 
@@ -672,7 +683,7 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
     ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
-                description="You are not a moderator of this club or you do not have permission :-(",  
+                description="You are not a moderator of this club or you do not have permission :-(",
                 color=COLORS["NO_PERMS"],
             ),
             ephemeral=True,
@@ -686,12 +697,12 @@ async def delete_msg(interaction: discord.Interaction, message: discord.Message)
 **Author**: {message.author.mention} (`{message.author.name}`)
 **Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}'`)
 **Club**: {club['name']}
-            """,  
+            """,
         color=COLORS["DELETE"],
     )
     logbed.set_footer(text=f"Club ID: {club['_id']}")
     channel = client.get_channel(CHANNELS["LOGS"])
-    if type(channel) == TextChannel:
+    if isinstance(channel, TextChannel):
         await channel.send(embed=logbed)
     return await interaction.response.send_message("Message deleted.", ephemeral=True)
 
@@ -716,7 +727,7 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
     ) and interaction.user.id != club["owner"]:
         return await interaction.response.send_message(
             embed=await create_embed(
-                description="You are not a moderator of this club or do not have permission :-(",  
+                description="You are not a moderator of this club or do not have permission :-(",
                 color=COLORS["NO_PERMS"],
             ),
             ephemeral=True,
@@ -728,12 +739,12 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
             await message.pin()
         except discord.HTTPException:
             await interaction.response.send_message(
-                "There are more than 50 pinned messages in this channel, try unpinning some first",  
+                "There are more than 50 pinned messages in this channel, try unpinning some first",
                 ephemeral=False,
             )
 
     await interaction.channel.send(
-        f"{interaction.user.mention} {'' if message.pinned else 'un'}pinned {message.jump_url}.",  
+        f"{interaction.user.mention} {'' if message.pinned else 'un'}pinned {message.jump_url}.",
         suppress_embeds=True,
     )
 
@@ -744,13 +755,13 @@ async def pin_msg(interaction: discord.Interaction, message: discord.Message):
 **Author**: {message.author.mention} (`{message.author.name}`)
 **Moderator**: {':crown:' if interaction.user.id == club['owner'] else ''}{interaction.user.mention} (`{interaction.user.name}`)
 **Club**: {club['name']}
-            """,  
+            """,
         color=COLORS["PIN"],
     )
 
     logbed.set_footer(text=f"Club ID: {club['_id']}")
     channel = client.get_channel(CHANNELS["LOGS"])
-    if type(channel) == TextChannel:
+    if isinstance(channel, TextChannel):
         await channel.send(embed=logbed)
 
 
@@ -847,6 +858,7 @@ async def ban_user(interaction: discord.Interaction, user: discord.Member, time:
 
 
 try:
+    load_dotenv()
     client.run(os.environ["BOT_TOKEN"])
 except BaseException as e:
     print(f"ERROR WITH LOGGING IN: {e}")
