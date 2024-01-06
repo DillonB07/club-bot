@@ -10,8 +10,15 @@ WORKDIR /app
 # Copy the poetry.lock and pyproject.toml files to the container
 COPY poetry.lock pyproject.toml /app/
 
+# Install build tools
+USER root
+RUN apt update && apt install -y --no-install-recommends \
+    gcc \
+    libc6-dev
+USER mambauser
+
 # Install project dependencies using poetry
-RUN poetry install --no-root --no-dev
+RUN poetry install --only main 
 
 # Copy the rest of the project files to the container
 COPY . /app
