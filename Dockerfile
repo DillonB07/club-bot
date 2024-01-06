@@ -10,8 +10,10 @@ WORKDIR /app
 # Copy the poetry.lock and pyproject.toml files to the container
 COPY poetry.lock pyproject.toml /app/
 
-# Install poetry
-RUN pip install poetry==1.5.1
+# Install poetry and add to PATH
+RUN apk add --no-cache curl && \
+    curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="~/.local/bin:$PATH"
 
 # Install project dependencies using poetry
 RUN poetry install --no-root --no-dev
