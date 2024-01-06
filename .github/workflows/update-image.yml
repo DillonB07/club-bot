@@ -7,8 +7,8 @@ on:
     workflow_dispatch:
 
 jobs:
-    push-store-image:
-        runs-on: ubuntu-latest
+  push-store-image:
+        runs-on: ARM64
         permissions:
             contents: read
             packages: write
