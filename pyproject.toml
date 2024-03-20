@@ -19,7 +19,7 @@ motor = "^3.3.2"
 ruff = "^0.0.285"
 pre-commit = "^3.3.3"
 sourcery = "^1.8.0"
-black = "^23.11.0"
+black = "^24.3.0"
 
 [build-system]
 requires = ["poetry-core"]
